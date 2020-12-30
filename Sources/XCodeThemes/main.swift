@@ -10,6 +10,9 @@ import Foundation
 struct XCodeThemes {
     private let fileManager = FileManager.default
 
+    let fontDownloadSource = URL(
+        staticString: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.221/JetBrainsMono-2.221.zip")
+
     static func main() {
         let xCodeThemes = XCodeThemes()
         var localFontsFolder: URL
@@ -86,9 +89,7 @@ struct XCodeThemes {
     }
 
     func getFontsZip() throws -> Data {
-        let fontZipURL = URL(
-            staticString: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.221/JetBrainsMono-2.221.zip")
-        let data = try Data(contentsOf: fontZipURL)
+        let data = try Data(contentsOf: fontDownloadSource)
         return data
     }
 
