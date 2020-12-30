@@ -13,13 +13,23 @@ struct XCodeThemes {
     static func main() {
         let xCodeThemes = XCodeThemes()
         var localFontsFolder: URL
-        switch xCodeThemes.getLocalFontsFolder() {
-        case .failure(let failure):
-            print(failure.localizedDescription)
+        do {
+            localFontsFolder = try xCodeThemes.getLocalFontsFolder()
+        } catch XCodeThemes.Errors.libraryFolderNotFound {
+            print(XCodeThemes.Errors.libraryFolderNotFound.localizedDescription)
             return
-        case .success(let url):
-            localFontsFolder = url
+        } catch {
+            print(error.localizedDescription)
+            return
         }
+//        switch xCodeThemes.getLocalFontsFolder() {
+//        case .failure(let failure):
+//            print(failure.localizedDescription)
+//            return
+//        case .success(let url):
+//            localFontsFolder = url
+//        }
+
 //        var fontsZipData: Data
 //        print("Dowloading Jet Brains Mono fonts")
 //        switch xCodeThemes.getFontsZip() {
@@ -31,18 +41,49 @@ struct XCodeThemes {
 //        }
 //        print("Installing Jet Brains Mono fonts")
 //        localFontsFolder.createFolder(named: "JetBrainsMono.zip", with: fontsZipData)
-//        print("Have fun")
-        let jetBrainsMonoZipFolder = localFontsFolder
+
+//        let output: String
+//        do {
+//            output = try xCodeThemes.unzipFonts(at: localFontsFolder.path)
+//        } catch XCodeThemes.Errors.jetBrainsMonoFolderExists {
+//            print(XCodeThemes.Errors.jetBrainsMonoFolderExists.localizedDescription)
+//            return
+//        } catch {
+//            print(error.localizedDescription)
+//            return
+//        }
+//        print(output)
+
+        let jetBrainsMonoFontsFolder = localFontsFolder
             .appendingPathComponent("JetBrainsMono")
-            .appendingPathExtension("zip")
-        var output: String
+            .appendingPathComponent("fonts")
+            .appendingPathComponent("ttf")
+        guard FileManager.default.fileExists(atPath: jetBrainsMonoFontsFolder.path) else {
+            /// - TODO: throw error
+            return
+        }
+        let contentOfJetBrainsMonoFontsFolder: [URL]
         do {
-            output = try zShell("cd \(localFontsFolder.path) && unzip \(jetBrainsMonoZipFolder.lastPathComponent) -d JetBrainsMono")
+            contentOfJetBrainsMonoFontsFolder = try FileManager.default.contentsOfDirectory(at: jetBrainsMonoFontsFolder, includingPropertiesForKeys: nil, options: [])
         } catch {
             print(error.localizedDescription)
             return
         }
-        print(output)
+        do {
+            try contentOfJetBrainsMonoFontsFolder.forEach {
+                guard !FileManager.default.fileExists(atPath: localFontsFolder.appendingPathComponent($0.lastPathComponent).path) else {
+                    print("\($0.lastPathComponent) allready exists in \(localFontsFolder.path)")
+                    return
+                }
+                print("Moving \($0.lastPathComponent) to \(localFontsFolder.path)")
+                try FileManager.default.moveItem(at: $0, to: localFontsFolder.appendingPathComponent($0.lastPathComponent))
+            }
+        } catch {
+            print(error.localizedDescription)
+            return
+        }
+
+        print("Have fun")
     }
 
     func getFontsZip() -> Result<Data, Error> {
@@ -56,32 +97,34 @@ struct XCodeThemes {
         }
     }
 
-    func getLocalFontsFolder() -> Result<URL, Error> {
+    func getLocalFontsFolder() throws -> URL {
         guard let libraryFolder = fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first else {
-            return .failure(XCodeThemes.Errors.libraryFolderNotFound)
+            throw XCodeThemes.Errors.libraryFolderNotFound
         }
         var contentOfLibraryFolder: [URL]!
-        do {
-            contentOfLibraryFolder = try fileManager.contentsOfDirectory(at: libraryFolder,
-                                                                         includingPropertiesForKeys: nil,
-                                                                         options: [])
-        } catch {
-            return .failure(error)
-        }
+        contentOfLibraryFolder = try fileManager.contentsOfDirectory(at: libraryFolder,
+                                                                     includingPropertiesForKeys: nil,
+                                                                     options: [])
         let assumedFontsFolder = libraryFolder.appendingPathComponent("Fonts")
         let fontsFolder = contentOfLibraryFolder.first { $0.absoluteString == assumedFontsFolder.absoluteString }
         if fontsFolder == nil {
-            do {
-                try fileManager.createDirectory(at: assumedFontsFolder, withIntermediateDirectories: true, attributes: nil)
-            } catch {
-                return .failure(error)
-            }
+            try fileManager.createDirectory(at: assumedFontsFolder, withIntermediateDirectories: true, attributes: nil)
         }
-        return .success(assumedFontsFolder)
+        return assumedFontsFolder
+    }
+
+    func unzipFonts(at path: String) throws -> String {
+        guard !fileManager.fileExists(atPath: "\(path)/JetBrainsMono") else {
+            throw XCodeThemes.Errors.jetBrainsMonoFolderExists
+        }
+        print("unzipping")
+        let output = try zShell("unzip JetBrainsMono.zip -d JetBrainsMono", at: path)
+        return output
     }
 
     enum Errors: Error {
         case libraryFolderNotFound
+        case jetBrainsMonoFolderExists
     }
 }
 
@@ -96,10 +139,15 @@ extension URL {
     }
 }
 
-@discardableResult
-func shell(_ launchPath: String, _ command: String) throws -> String {
+func shell(_ launchPath: String, _ command: String, at executionLocation: String? = nil) throws -> String {
     let task = Process()
-    task.arguments = ["-c", command]
+    var commandToUse: String
+    if let executionLocation = executionLocation {
+        commandToUse = "cd \(executionLocation) && \(command)"
+    } else {
+        commandToUse = command
+    }
+    task.arguments = ["-c", commandToUse]
     task.launchPath = launchPath
 
     let pipe = Pipe()
@@ -113,22 +161,22 @@ func shell(_ launchPath: String, _ command: String) throws -> String {
     task.waitUntilExit()
 
     if task.terminationStatus != 0 {
-        throw ShellError.failed
+        throw ShellErrors.failed
     }
     return output
 }
 
 @discardableResult
-func zShell(_ command: String) throws -> String {
-    try shell("/bin/zsh", command)
+func zShell(_ command: String, at executionLocation: String? = nil) throws -> String {
+    try shell("/bin/zsh", command, at: executionLocation)
 }
 
-enum ShellError: Error {
+enum ShellErrors: Error {
     case failed
 }
 
-extension ShellError {
-    var errorDescription: String? {
+extension ShellErrors {
+    var localizedDescription: String {
         switch self {
         case .failed:
             return "Shell command failed to execute"
@@ -137,10 +185,12 @@ extension ShellError {
 }
 
 extension XCodeThemes.Errors {
-    var errorDescription: String? {
+    var localizedDescription: String {
         switch self {
         case .libraryFolderNotFound:
             return "Library folder could not be found"
+        case .jetBrainsMonoFolderExists:
+            return "JetBrainsMono folder allready exists, please delete before you can go on"
         }
     }
 }
