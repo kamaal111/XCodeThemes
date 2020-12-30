@@ -54,33 +54,19 @@ struct XCodeThemes {
 //        }
 //        print(output)
 
-        let jetBrainsMonoFontsFolder = localFontsFolder
-            .appendingPathComponent("JetBrainsMono")
-            .appendingPathComponent("fonts")
-            .appendingPathComponent("ttf")
-        guard FileManager.default.fileExists(atPath: jetBrainsMonoFontsFolder.path) else {
-            /// - TODO: throw error
-            return
-        }
-        let contentOfJetBrainsMonoFontsFolder: [URL]
+        let jetBrainsMonoFolder = localFontsFolder.appendingPathComponent("JetBrainsMono")
+        let jetBrainsMonoFontsFolder = jetBrainsMonoFolder.appendingPathComponent("fonts").appendingPathComponent("ttf")
         do {
-            contentOfJetBrainsMonoFontsFolder = try FileManager.default.contentsOfDirectory(at: jetBrainsMonoFontsFolder, includingPropertiesForKeys: nil, options: [])
+            try xCodeThemes.moveFolderContent(of: jetBrainsMonoFontsFolder, to: localFontsFolder)
         } catch {
             print(error.localizedDescription)
             return
         }
+
         do {
-            try contentOfJetBrainsMonoFontsFolder.forEach {
-                guard !FileManager.default.fileExists(atPath: localFontsFolder.appendingPathComponent($0.lastPathComponent).path) else {
-                    print("\($0.lastPathComponent) allready exists in \(localFontsFolder.path)")
-                    return
-                }
-                print("Moving \($0.lastPathComponent) to \(localFontsFolder.path)")
-                try FileManager.default.moveItem(at: $0, to: localFontsFolder.appendingPathComponent($0.lastPathComponent))
-            }
+            try xCodeThemes.deleteFolder(at: jetBrainsMonoFolder)
         } catch {
             print(error.localizedDescription)
-            return
         }
 
         print("Have fun")
@@ -120,6 +106,24 @@ struct XCodeThemes {
         print("unzipping")
         let output = try zShell("unzip JetBrainsMono.zip -d JetBrainsMono", at: path)
         return output
+    }
+
+    func moveFolderContent(of contentFolder: URL, to destination: URL) throws {
+        let contentOfJetBrainsMonoFontsFolder = try fileManager.contentsOfDirectory(at: contentFolder,
+                                                                                    includingPropertiesForKeys: nil,
+                                                                                    options: [])
+        try contentOfJetBrainsMonoFontsFolder.forEach {
+            guard !fileManager.fileExists(atPath: destination.appendingPathComponent($0.lastPathComponent).path) else {
+                print("\($0.lastPathComponent) allready exists in \(destination.path)")
+                return
+            }
+            print("Moving \($0.lastPathComponent) to \(destination.path)")
+            try fileManager.moveItem(at: $0, to: destination.appendingPathComponent($0.lastPathComponent))
+        }
+    }
+
+    func deleteFolder(at url: URL) throws {
+        try fileManager.removeItem(at: url)
     }
 
     enum Errors: Error {
