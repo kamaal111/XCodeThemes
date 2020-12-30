@@ -22,37 +22,30 @@ struct XCodeThemes {
             print(error.localizedDescription)
             return
         }
-//        switch xCodeThemes.getLocalFontsFolder() {
-//        case .failure(let failure):
-//            print(failure.localizedDescription)
-//            return
-//        case .success(let url):
-//            localFontsFolder = url
-//        }
 
-//        var fontsZipData: Data
-//        print("Dowloading Jet Brains Mono fonts")
-//        switch xCodeThemes.getFontsZip() {
-//        case .failure(let failure):
-//            print(failure.localizedDescription)
-//            return
-//        case .success(let data):
-//            fontsZipData = data
-//        }
-//        print("Installing Jet Brains Mono fonts")
-//        localFontsFolder.createFolder(named: "JetBrainsMono.zip", with: fontsZipData)
+        var fontsZipData: Data
+        print("Dowloading Jet Brains Mono fonts")
+        switch xCodeThemes.getFontsZip() {
+        case .failure(let failure):
+            print(failure.localizedDescription)
+            return
+        case .success(let data):
+            fontsZipData = data
+        }
+        print("Installing Jet Brains Mono fonts")
+        localFontsFolder.createFolder(named: "JetBrainsMono.zip", with: fontsZipData)
 
-//        let output: String
-//        do {
-//            output = try xCodeThemes.unzipFonts(at: localFontsFolder.path)
-//        } catch XCodeThemes.Errors.jetBrainsMonoFolderExists {
-//            print(XCodeThemes.Errors.jetBrainsMonoFolderExists.localizedDescription)
-//            return
-//        } catch {
-//            print(error.localizedDescription)
-//            return
-//        }
-//        print(output)
+        let output: String
+        do {
+            output = try xCodeThemes.unzipFonts(at: localFontsFolder.path)
+        } catch XCodeThemes.Errors.jetBrainsMonoFolderExists {
+            print(XCodeThemes.Errors.jetBrainsMonoFolderExists.localizedDescription)
+            return
+        } catch {
+            print(error.localizedDescription)
+            return
+        }
+        print(output)
 
         let jetBrainsMonoFolder = localFontsFolder.appendingPathComponent("JetBrainsMono")
         let jetBrainsMonoFontsFolder = jetBrainsMonoFolder.appendingPathComponent("fonts").appendingPathComponent("ttf")
@@ -64,9 +57,11 @@ struct XCodeThemes {
         }
 
         do {
+            try xCodeThemes.deleteFolder(at: jetBrainsMonoFolder.appendingPathExtension("zip"))
             try xCodeThemes.deleteFolder(at: jetBrainsMonoFolder)
         } catch {
             print(error.localizedDescription)
+            return
         }
 
         print("Have fun")
