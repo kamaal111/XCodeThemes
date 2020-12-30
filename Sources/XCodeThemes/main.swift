@@ -33,13 +33,16 @@ struct XCodeThemes {
             fontsZipData = data
         }
         print("Installing Jet Brains Mono fonts")
-        localFontsFolder.createFolder(named: "JetBrainsMono.zip", with: fontsZipData)
+
+        let jetBrainsMonoFolder = localFontsFolder.appendingPathComponent("JetBrainsMono")
+
+        xCodeThemes.createZip(at: jetBrainsMonoFolder.appendingPathExtension("zip"), with: fontsZipData)
 
         let output: String
         do {
             output = try xCodeThemes.unzipFonts(at: localFontsFolder.path)
-        } catch XCodeThemes.Errors.jetBrainsMonoFolderExists {
-            print(XCodeThemes.Errors.jetBrainsMonoFolderExists.localizedDescription)
+        } catch ShellErrors.failed {
+            print(ShellErrors.failed.localizedDescription)
             return
         } catch {
             print(error.localizedDescription)
@@ -47,7 +50,6 @@ struct XCodeThemes {
         }
         print(output)
 
-        let jetBrainsMonoFolder = localFontsFolder.appendingPathComponent("JetBrainsMono")
         let jetBrainsMonoFontsFolder = jetBrainsMonoFolder.appendingPathComponent("fonts").appendingPathComponent("ttf")
         do {
             try xCodeThemes.moveFolderContent(of: jetBrainsMonoFontsFolder, to: localFontsFolder)
@@ -57,7 +59,9 @@ struct XCodeThemes {
         }
 
         do {
+            print("Deleting \(jetBrainsMonoFolder.appendingPathExtension("zip").path)")
             try xCodeThemes.deleteFolder(at: jetBrainsMonoFolder.appendingPathExtension("zip"))
+            print("Deleting \(jetBrainsMonoFolder.path)")
             try xCodeThemes.deleteFolder(at: jetBrainsMonoFolder)
         } catch {
             print(error.localizedDescription)
@@ -95,9 +99,6 @@ struct XCodeThemes {
     }
 
     func unzipFonts(at path: String) throws -> String {
-        guard !fileManager.fileExists(atPath: "\(path)/JetBrainsMono") else {
-            throw XCodeThemes.Errors.jetBrainsMonoFolderExists
-        }
         print("unzipping")
         let output = try zShell("unzip JetBrainsMono.zip -d JetBrainsMono", at: path)
         return output
@@ -121,18 +122,16 @@ struct XCodeThemes {
         try fileManager.removeItem(at: url)
     }
 
+    func createZip(at destination: URL, with content: Data) {
+        fileManager.createFile(atPath: destination.path, contents: content)
+    }
+
     enum Errors: Error {
         case libraryFolderNotFound
-        case jetBrainsMonoFolderExists
     }
 }
 
 extension URL {
-    @discardableResult
-    func createFolder(named: String, with data: Data, using fileManager: FileManager = FileManager.default) -> Bool {
-        fileManager.createFile(atPath: self.appendingPathComponent(named).path, contents: data)
-    }
-
     init(staticString: StaticString) {
         self.init(string: "\(staticString)")!
     }
@@ -188,8 +187,6 @@ extension XCodeThemes.Errors {
         switch self {
         case .libraryFolderNotFound:
             return "Library folder could not be found"
-        case .jetBrainsMonoFolderExists:
-            return "JetBrainsMono folder allready exists, please delete before you can go on"
         }
     }
 }
