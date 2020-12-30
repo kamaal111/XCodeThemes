@@ -20,23 +20,34 @@ struct XCodeThemes {
         case .success(let url):
             localFontsFolder = url
         }
-        var fontsZipData: Data
-        print("Dowloading Jet Brains Mono fonts")
-        switch xCodeThemes.getFontsZip() {
-        case .failure(let failure):
-            print(failure.localizedDescription)
+//        var fontsZipData: Data
+//        print("Dowloading Jet Brains Mono fonts")
+//        switch xCodeThemes.getFontsZip() {
+//        case .failure(let failure):
+//            print(failure.localizedDescription)
+//            return
+//        case .success(let data):
+//            fontsZipData = data
+//        }
+//        print("Installing Jet Brains Mono fonts")
+//        localFontsFolder.createFolder(named: "JetBrainsMono.zip", with: fontsZipData)
+//        print("Have fun")
+        let jetBrainsMonoZipFolder = localFontsFolder
+            .appendingPathComponent("JetBrainsMono")
+            .appendingPathExtension("zip")
+        var output: String
+        do {
+            output = try zShell("cd \(localFontsFolder.path) && unzip \(jetBrainsMonoZipFolder.lastPathComponent) -d JetBrainsMono")
+        } catch {
+            print(error.localizedDescription)
             return
-        case .success(let data):
-            fontsZipData = data
         }
-        print("Installing Jet Brains Mono fonts")
-        localFontsFolder.createFolder(named: "JetBrainsMono.zip", with: fontsZipData)
-        print("Have fun")
+        print(output)
     }
 
     func getFontsZip() -> Result<Data, Error> {
         let fontZipURL = URL(
-            string: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.221/JetBrainsMono-2.221.zip")!
+            staticString: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.221/JetBrainsMono-2.221.zip")
         do {
             let data = try Data(contentsOf: fontZipURL)
             return .success(data)
@@ -79,11 +90,16 @@ extension URL {
     func createFolder(named: String, with data: Data, using fileManager: FileManager = FileManager.default) -> Bool {
         fileManager.createFile(atPath: self.appendingPathComponent(named).path, contents: data)
     }
+
+    init(staticString: StaticString) {
+        self.init(string: "\(staticString)")!
+    }
 }
 
-func shell(_ launchPath: String, _ arguments: String...) throws -> String {
+@discardableResult
+func shell(_ launchPath: String, _ command: String) throws -> String {
     let task = Process()
-    task.arguments = ["-c", arguments.joined(separator: " ")]
+    task.arguments = ["-c", command]
     task.launchPath = launchPath
 
     let pipe = Pipe()
@@ -100,6 +116,11 @@ func shell(_ launchPath: String, _ arguments: String...) throws -> String {
         throw ShellError.failed
     }
     return output
+}
+
+@discardableResult
+func zShell(_ command: String) throws -> String {
+    try shell("/bin/zsh", command)
 }
 
 enum ShellError: Error {
