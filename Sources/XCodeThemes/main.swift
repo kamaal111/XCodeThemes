@@ -25,12 +25,11 @@ struct XCodeThemes {
 
         var fontsZipData: Data
         print("Dowloading Jet Brains Mono fonts")
-        switch xCodeThemes.getFontsZip() {
-        case .failure(let failure):
-            print(failure.localizedDescription)
+        do {
+            fontsZipData = try xCodeThemes.getFontsZip()
+        } catch {
+            print(error.localizedDescription)
             return
-        case .success(let data):
-            fontsZipData = data
         }
         print("Installing Jet Brains Mono fonts")
 
@@ -68,18 +67,43 @@ struct XCodeThemes {
             return
         }
 
+        let rootURL = URL(string: #file)!
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let kamaalLightTheme = rootURL.appendingPathComponent("KamaalLight.xccolortheme")
+        do {
+            try xCodeThemes.addThemeToXCodeThemes(with: kamaalLightTheme)
+        } catch XCodeThemes.Errors.libraryFolderNotFound {
+            print(XCodeThemes.Errors.libraryFolderNotFound.localizedDescription)
+            return
+        } catch {
+            print(error.localizedDescription)
+            return
+        }
+
         print("Have fun")
     }
 
-    func getFontsZip() -> Result<Data, Error> {
+    func getFontsZip() throws -> Data {
         let fontZipURL = URL(
             staticString: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.221/JetBrainsMono-2.221.zip")
-        do {
-            let data = try Data(contentsOf: fontZipURL)
-            return .success(data)
-        } catch {
-            return .failure(error)
+        let data = try Data(contentsOf: fontZipURL)
+        return data
+    }
+
+    @discardableResult
+    func addThemeToXCodeThemes(with file: URL) throws -> Bool {
+        guard let libraryFolder = fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first else {
+            throw XCodeThemes.Errors.libraryFolderNotFound
         }
+        let developerFolder = try libraryFolder.createSubFolderIfNeeded(of: "Developer")
+        let xCodeFolder = try developerFolder.createSubFolderIfNeeded(of: "Xcode")
+        let userDataFolder = try xCodeFolder.createSubFolderIfNeeded(of: "UserData")
+        let fontAndColorThemesFolder = try userDataFolder.createSubFolderIfNeeded(of: "FontAndColorThemes")
+        let urlToPlaceFile = fontAndColorThemesFolder.appendingPathComponent(file.lastPathComponent)
+        let dataFromFile = try Data(contentsOf: URL(fileURLWithPath: file.path), options: .mappedIfSafe)
+        return fileManager.createFile(atPath: urlToPlaceFile.path, contents: dataFromFile, attributes: nil)
     }
 
     func getLocalFontsFolder() throws -> URL {
@@ -134,6 +158,13 @@ struct XCodeThemes {
 extension URL {
     init(staticString: StaticString) {
         self.init(string: "\(staticString)")!
+    }
+
+    func createSubFolderIfNeeded(of path: String) throws -> URL {
+        let proposedURL = self.appendingPathComponent(path)
+        guard !FileManager.default.fileExists(atPath: proposedURL.path) else { return proposedURL }
+        try FileManager.default.createDirectory(at: proposedURL, withIntermediateDirectories: true, attributes: nil)
+        return proposedURL
     }
 }
 
