@@ -12,26 +12,29 @@ struct XCodeThemes {
 
     static func main() {
         let xCodeThemes = XCodeThemes()
-        do {
-            try xCodeThemes.getFontsFolder()
-        } catch XCodeThemes.Errors.libraryFolderNotFound {
-            print(XCodeThemes.Errors.libraryFolderNotFound.localizedDescription)
-        } catch {
-            print(error.localizedDescription)
+        var localFontsFolder: URL
+        switch xCodeThemes.getLocalFontsFolder() {
+        case .failure(let failure):
+            print(failure.localizedDescription)
+            return
+        case .success(let url):
+            localFontsFolder = url
         }
-//        let getFontsResult = xCodeThemes.getFonts()
-//        let fontsData: Data!
-//        switch getFontsResult {
-//        case .failure(let failure):
-//            print(failure)
-//            return
-//        case .success(let fonts):
-//            fontsData = fonts
-//        }
-//        print(fontsData)
+        var fontsZipData: Data
+        print("Dowloading Jet Brains Mono fonts")
+        switch xCodeThemes.getFontsZip() {
+        case .failure(let failure):
+            print(failure.localizedDescription)
+            return
+        case .success(let data):
+            fontsZipData = data
+        }
+        print("Installing Jet Brains Mono fonts")
+        localFontsFolder.createFolder(named: "JetBrainsMono.zip", with: fontsZipData)
+        print("Have fun")
     }
 
-    func getFonts() -> Result<Data, Error> {
+    func getFontsZip() -> Result<Data, Error> {
         let fontZipURL = URL(
             string: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.221/JetBrainsMono-2.221.zip")!
         do {
@@ -42,22 +45,28 @@ struct XCodeThemes {
         }
     }
 
-    func getFontsFolder() throws {
+    func getLocalFontsFolder() -> Result<URL, Error> {
         guard let libraryFolder = fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first else {
-            throw XCodeThemes.Errors.libraryFolderNotFound
+            return .failure(XCodeThemes.Errors.libraryFolderNotFound)
         }
-        let contentOfLibraryFolder = try fileManager.contentsOfDirectory(at: libraryFolder,
+        var contentOfLibraryFolder: [URL]!
+        do {
+            contentOfLibraryFolder = try fileManager.contentsOfDirectory(at: libraryFolder,
                                                                          includingPropertiesForKeys: nil,
                                                                          options: [])
+        } catch {
+            return .failure(error)
+        }
         let assumedFontsFolder = libraryFolder.appendingPathComponent("Fonts")
         let fontsFolder = contentOfLibraryFolder.first { $0.absoluteString == assumedFontsFolder.absoluteString }
-        if let unwrappedFontsFolder = fontsFolder {
-            print(unwrappedFontsFolder)
-            let output = shell("/bin/zsh", "echo", "\("hello world")")
-            print(output)
-        } else {
-//            try fileManager.createDirectory(at: libraryFolder.appendingPathComponent("Fonts/"), withIntermediateDirectories: true, attributes: nil)
+        if fontsFolder == nil {
+            do {
+                try fileManager.createDirectory(at: assumedFontsFolder, withIntermediateDirectories: true, attributes: nil)
+            } catch {
+                return .failure(error)
+            }
         }
+        return .success(assumedFontsFolder)
     }
 
     enum Errors: Error {
@@ -65,7 +74,14 @@ struct XCodeThemes {
     }
 }
 
-func shell(_ launchPath: String, _ arguments: String...) -> String {
+extension URL {
+    @discardableResult
+    func createFolder(named: String, with data: Data, using fileManager: FileManager = FileManager.default) -> Bool {
+        fileManager.createFile(atPath: self.appendingPathComponent(named).path, contents: data)
+    }
+}
+
+func shell(_ launchPath: String, _ arguments: String...) throws -> String {
     let task = Process()
     task.arguments = ["-c", arguments.joined(separator: " ")]
     task.launchPath = launchPath
@@ -79,18 +95,24 @@ func shell(_ launchPath: String, _ arguments: String...) -> String {
     let output = String(data: data, encoding: .utf8)!
 
     task.waitUntilExit()
-    let status = task.terminationStatus
-    if status == 0 {
-        // pass
-    } else {
-        // error
-    }
 
+    if task.terminationStatus != 0 {
+        throw ShellError.failed
+    }
     return output
 }
 
-enum ShellErrors: Error {
+enum ShellError: Error {
     case failed
+}
+
+extension ShellError {
+    var errorDescription: String? {
+        switch self {
+        case .failed:
+            return "Shell command failed to execute"
+        }
+    }
 }
 
 extension XCodeThemes.Errors {
