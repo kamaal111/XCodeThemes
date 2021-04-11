@@ -75,11 +75,12 @@ struct XCodeThemes {
             return
         }
 
-        let rootURL = URL(string: #file)!
+        let rootURL = URL(staticString: #file)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        themes.forEach { (theme: String) in
+
+        for theme in themes {
             do {
                 try xCodeThemes.addThemeToXCodeThemes(with: rootURL.appendingPathComponent(theme))
             } catch XCodeThemes.Errors.libraryFolderNotFound {
@@ -90,6 +91,7 @@ struct XCodeThemes {
                 return
             }
         }
+
         print("Have fun")
     }
 
