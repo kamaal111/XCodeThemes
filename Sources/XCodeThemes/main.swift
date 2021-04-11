@@ -10,6 +10,11 @@ import Foundation
 struct XCodeThemes {
     private let fileManager = FileManager.default
 
+    static let themes = [
+        "KamaalLight.xccolortheme",
+        "KamaalDark.xccolortheme"
+    ]
+
     let fontDownloadSource = URL(
         staticString: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.221/JetBrainsMono-2.221.zip")
 
@@ -74,17 +79,17 @@ struct XCodeThemes {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        let kamaalLightTheme = rootURL.appendingPathComponent("KamaalLight.xccolortheme")
-        do {
-            try xCodeThemes.addThemeToXCodeThemes(with: kamaalLightTheme)
-        } catch XCodeThemes.Errors.libraryFolderNotFound {
-            print(XCodeThemes.Errors.libraryFolderNotFound.localizedDescription)
-            return
-        } catch {
-            print(error.localizedDescription)
-            return
+        themes.forEach { (theme: String) in
+            do {
+                try xCodeThemes.addThemeToXCodeThemes(with: rootURL.appendingPathComponent(theme))
+            } catch XCodeThemes.Errors.libraryFolderNotFound {
+                print(XCodeThemes.Errors.libraryFolderNotFound.localizedDescription)
+                return
+            } catch {
+                print(error.localizedDescription)
+                return
+            }
         }
-
         print("Have fun")
     }
 
