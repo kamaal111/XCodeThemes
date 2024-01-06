@@ -6,24 +6,25 @@
 //
 
 import Foundation
+import KamaalExtensions
 
 @main
 struct XCodeThemes {
-    private let fileManager = FileManager.default
+    private static let fileManager = FileManager.default
 
-    static let themes = [
+    private static let themes = [
         "KamaalLight.xccolortheme",
         "KamaalDark.xccolortheme"
     ]
 
-    let fontDownloadSource = URL(
-        staticString: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.304/JetBrainsMono-2.304.zip")
+    private static let fontDownloadSource = URL(
+        staticString: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.304/JetBrainsMono-2.304.zip"
+    )
 
     static func main() {
-        let xCodeThemes = XCodeThemes()
         var localFontsFolder: URL
         do {
-            localFontsFolder = try xCodeThemes.getLocalFontsFolder()
+            localFontsFolder = try getLocalFontsFolder()
         } catch XCodeThemes.Errors.libraryFolderNotFound {
             print(XCodeThemes.Errors.libraryFolderNotFound.localizedDescription)
             return
@@ -35,7 +36,7 @@ struct XCodeThemes {
         var fontsZipData: Data
         print("Dowloading Jet Brains Mono fonts")
         do {
-            fontsZipData = try xCodeThemes.getFontsZip()
+            fontsZipData = try getFontsZip()
         } catch {
             print(error.localizedDescription)
             return
@@ -44,11 +45,11 @@ struct XCodeThemes {
 
         let jetBrainsMonoFolder = localFontsFolder.appendingPathComponent("JetBrainsMono")
 
-        xCodeThemes.createZip(at: jetBrainsMonoFolder.appendingPathExtension("zip"), with: fontsZipData)
+        createZip(at: jetBrainsMonoFolder.appendingPathExtension("zip"), with: fontsZipData)
 
         let output: String
         do {
-            output = try xCodeThemes.unzipFonts(at: localFontsFolder.path)
+            output = try unzipFonts(at: localFontsFolder.path)
         } catch ShellErrors.failed {
             print(ShellErrors.failed.localizedDescription)
             return
@@ -60,7 +61,7 @@ struct XCodeThemes {
 
         let jetBrainsMonoFontsFolder = jetBrainsMonoFolder.appendingPathComponent("fonts").appendingPathComponent("ttf")
         do {
-            try xCodeThemes.moveFolderContent(of: jetBrainsMonoFontsFolder, to: localFontsFolder)
+            try moveFolderContent(of: jetBrainsMonoFontsFolder, to: localFontsFolder)
         } catch {
             print(error.localizedDescription)
             return
@@ -68,9 +69,9 @@ struct XCodeThemes {
 
         do {
             print("Deleting \(jetBrainsMonoFolder.appendingPathExtension("zip").path)")
-            try xCodeThemes.deleteFolder(at: jetBrainsMonoFolder.appendingPathExtension("zip"))
+            try deleteFolder(at: jetBrainsMonoFolder.appendingPathExtension("zip"))
             print("Deleting \(jetBrainsMonoFolder.path)")
-            try xCodeThemes.deleteFolder(at: jetBrainsMonoFolder)
+            try deleteFolder(at: jetBrainsMonoFolder)
         } catch {
             print(error.localizedDescription)
             return
@@ -83,7 +84,7 @@ struct XCodeThemes {
 
         for theme in themes {
             do {
-                try xCodeThemes.addThemeToXCodeThemes(with: rootURL.appendingPathComponent(theme))
+                try addThemeToXCodeThemes(with: rootURL.appendingPathComponent(theme))
             } catch XCodeThemes.Errors.libraryFolderNotFound {
                 print(XCodeThemes.Errors.libraryFolderNotFound.localizedDescription)
                 return
@@ -96,13 +97,12 @@ struct XCodeThemes {
         print("Have fun")
     }
 
-    func getFontsZip() throws -> Data {
-        let data = try Data(contentsOf: fontDownloadSource)
-        return data
+    private static func getFontsZip() throws -> Data {
+        try Data(contentsOf: fontDownloadSource)
     }
 
     @discardableResult
-    func addThemeToXCodeThemes(with file: URL) throws -> Bool {
+    private static func addThemeToXCodeThemes(with file: URL) throws -> Bool {
         guard let libraryFolder = fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first else {
             throw XCodeThemes.Errors.libraryFolderNotFound
         }
@@ -115,7 +115,7 @@ struct XCodeThemes {
         return fileManager.createFile(atPath: urlToPlaceFile.path, contents: dataFromFile, attributes: nil)
     }
 
-    func getLocalFontsFolder() throws -> URL {
+    private static func getLocalFontsFolder() throws -> URL {
         guard let libraryFolder = fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first else {
             throw XCodeThemes.Errors.libraryFolderNotFound
         }
@@ -131,13 +131,13 @@ struct XCodeThemes {
         return assumedFontsFolder
     }
 
-    func unzipFonts(at path: String) throws -> String {
+    private static func unzipFonts(at path: String) throws -> String {
         print("unzipping")
         let output = try zShell("unzip JetBrainsMono.zip -d JetBrainsMono", at: path)
         return output
     }
 
-    func moveFolderContent(of contentFolder: URL, to destination: URL) throws {
+    private static func moveFolderContent(of contentFolder: URL, to destination: URL) throws {
         let contentOfJetBrainsMonoFontsFolder = try fileManager.contentsOfDirectory(at: contentFolder,
                                                                                     includingPropertiesForKeys: nil,
                                                                                     options: [])
@@ -151,11 +151,11 @@ struct XCodeThemes {
         }
     }
 
-    func deleteFolder(at url: URL) throws {
+    private static func deleteFolder(at url: URL) throws {
         try fileManager.removeItem(at: url)
     }
 
-    func createZip(at destination: URL, with content: Data) {
+    private static func createZip(at destination: URL, with content: Data) {
         fileManager.createFile(atPath: destination.path, contents: content)
     }
 
@@ -165,10 +165,6 @@ struct XCodeThemes {
 }
 
 extension URL {
-    init(staticString: StaticString) {
-        self.init(string: "\(staticString)")!
-    }
-
     func createSubFolderIfNeeded(of path: String) throws -> URL {
         let proposedURL = self.appendingPathComponent(path)
         guard !FileManager.default.fileExists(atPath: proposedURL.path) else { return proposedURL }

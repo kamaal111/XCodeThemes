@@ -5,10 +5,16 @@ import PackageDescription
 
 let package = Package(
     name: "XCodeThemes",
-    platforms: [.macOS(.v10_13)],
-    products: [],
-    dependencies: [],
+    platforms: [.macOS(.v12)],
+    dependencies: [
+        .package(url: "https://github.com/Kamaalio/KamaalSwift", .upToNextMajor(from: "1.6.1"))
+    ],
     targets: [
-        .executableTarget(name: "XCodeThemes"),
+        .executableTarget(
+            name: "XCodeThemes",
+            dependencies: [
+                .product(name: "KamaalExtensions", package: "KamaalSwift")
+            ]
+        ),
     ]
 )
