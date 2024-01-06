@@ -6,12 +6,12 @@
 //
 
 import Foundation
+import KamaalUtils
 import KamaalExtensions
 
 @main
 struct XCodeThemes {
     private static let fileManager = FileManager.default
-
     private static let themes = [
         "KamaalLight.xccolortheme",
         "KamaalDark.xccolortheme"
@@ -50,9 +50,6 @@ struct XCodeThemes {
         let output: String
         do {
             output = try unzipFonts(at: localFontsFolder.path)
-        } catch ShellErrors.failed {
-            print(ShellErrors.failed.localizedDescription)
-            return
         } catch {
             print(error.localizedDescription)
             return
@@ -133,8 +130,7 @@ struct XCodeThemes {
 
     private static func unzipFonts(at path: String) throws -> String {
         print("unzipping")
-        let output = try zShell("unzip JetBrainsMono.zip -d JetBrainsMono", at: path)
-        return output
+        return try Shell.zsh("unzip JetBrainsMono.zip -d JetBrainsMono", at: path).get()
     }
 
     private static func moveFolderContent(of contentFolder: URL, to destination: URL) throws {
@@ -170,51 +166,6 @@ extension URL {
         guard !FileManager.default.fileExists(atPath: proposedURL.path) else { return proposedURL }
         try FileManager.default.createDirectory(at: proposedURL, withIntermediateDirectories: true, attributes: nil)
         return proposedURL
-    }
-}
-
-func shell(_ launchPath: String, _ command: String, at executionLocation: String? = nil) throws -> String {
-    let task = Process()
-    var commandToUse: String
-    if let executionLocation = executionLocation {
-        commandToUse = "cd \(executionLocation) && \(command)"
-    } else {
-        commandToUse = command
-    }
-    task.arguments = ["-c", commandToUse]
-    task.launchPath = launchPath
-
-    let pipe = Pipe()
-    task.standardOutput = pipe
-    task.standardError = pipe
-
-    task.launch()
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    let output = String(data: data, encoding: .utf8)!
-
-    task.waitUntilExit()
-
-    if task.terminationStatus != 0 {
-        throw ShellErrors.failed
-    }
-    return output
-}
-
-@discardableResult
-func zShell(_ command: String, at executionLocation: String? = nil) throws -> String {
-    try shell("/bin/zsh", command, at: executionLocation)
-}
-
-enum ShellErrors: Error {
-    case failed
-}
-
-extension ShellErrors {
-    var localizedDescription: String {
-        switch self {
-        case .failed:
-            return "Shell command failed to execute"
-        }
     }
 }
 
