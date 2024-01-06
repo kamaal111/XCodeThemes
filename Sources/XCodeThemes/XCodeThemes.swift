@@ -7,6 +7,7 @@
 
 import Foundation
 
+@main
 struct XCodeThemes {
     private let fileManager = FileManager.default
 
@@ -229,5 +230,3 @@ extension XCodeThemes.Errors {
         }
     }
 }
-
-XCodeThemes.main()
