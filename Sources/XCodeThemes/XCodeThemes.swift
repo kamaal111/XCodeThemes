@@ -17,7 +17,7 @@ struct XCodeThemes {
     ]
 
     let fontDownloadSource = URL(
-        staticString: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.221/JetBrainsMono-2.221.zip")
+        staticString: "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.304/JetBrainsMono-2.304.zip")
 
     static func main() {
         let xCodeThemes = XCodeThemes()
