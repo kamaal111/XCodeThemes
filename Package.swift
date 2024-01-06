@@ -5,9 +5,9 @@ import PackageDescription
 
 let package = Package(
     name: "XCodeThemes",
-    platforms: [.macOS(.v12)],
+    platforms: [.macOS(.v13)],
     dependencies: [
-        .package(url: "https://github.com/Kamaalio/KamaalSwift", .upToNextMajor(from: "1.7.0"))
+        .package(url: "https://github.com/Kamaalio/KamaalSwift", .upToNextMajor(from: "1.8.0"))
     ],
     targets: [
         .executableTarget(
